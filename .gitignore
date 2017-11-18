@@ -1,0 +1,5 @@
+*.swp
+debian-new/files/*.pub
+debian-new/files/home/*
+debian-new/files/etc/*
+

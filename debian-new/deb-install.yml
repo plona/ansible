@@ -1,0 +1,112 @@
+- name: local pre-installation script
+  hosts: localhost
+  tasks:
+    - local_action: script local_scripts/pre-install.sh
+
+- name: standard installation
+  hosts: new
+  vars:
+    userlist:
+    - root
+    - marekpl
+    - krzysztofc
+    homedirs:
+    - /root
+    - /home/marekpl
+    - /home/krzysztofc
+
+  tasks:
+
+    - name: route
+      command: ip route add default via 192.168.123.1 dev ens3
+      ignore_errors: True
+      become: true
+ 
+    - name: aka "wajig update"
+      apt:
+        update_cache: yes
+      become: True
+
+    - name: install packages
+      apt: name={{ item }} state=installed
+      with_items:
+        - apt-file 
+        - apt-transport-https
+        - dnsutils 
+        - gawk
+        - git
+        - htop 
+        - less
+        - lsb-release 
+        - lsof
+        - mc 
+        - mlocate 
+        - net-tools
+        - netcat-openbsd
+        - ntp
+        - ntpdate
+        - openssh-server
+        - openssl
+        - parted
+        - pv
+        - rsync
+        - sudo
+        - tcpdump
+        - tmux
+        - tree
+        - vim
+        - wajig
+      become: True
+
+    - name: aka "wajig upgrade"
+      apt:
+        upgrade: full
+        autoremove: yes
+        autoclean: yes
+      become: yes
+
+    - name: network configuration
+      script: remote_scripts/net_interface.sh ens3 ens4 >> /etc/network/interfaces
+      become: True
+
+    - name: create users
+      user:
+        name: "{{ item }}"
+        groups: sudo
+        shell: /bin/bash
+        generate_ssh_key: yes
+        state: present
+      with_items: "{{ userlist }}"
+      when: item != "root"
+      become: True
+
+    - name: copy files from local to remote
+      copy:
+        src: "{{ item }}"
+        dest: /tmp/
+      with_fileglob:
+        - files/*.tgz
+      become: True
+
+    - name: unpack user's dot files & utils
+      unarchive:
+        src: /tmp/home.tgz
+        dest: "{{ item.1 }}"
+        owner: "{{ item.0 }}"
+        group: "{{ item.0 }}"
+        remote_src: yes
+      with_together:
+        - "{{ userlist }}"
+        - "{{ homedirs }}"
+      become: True
+
+    - name: fix users homes permisions
+      file:
+        path: "{{ item.1 }}"
+        mode: 0700
+        owner: "{{ item.0 }}"
+        group: "{{ item.0 }}"
+      with_together:
+        - "{{ userlist }}"
+        - "{{ homedirs }}"
+      become: True
