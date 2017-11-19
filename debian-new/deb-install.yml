@@ -74,7 +74,7 @@
         name: "{{ item }}"
         groups: sudo
         shell: /bin/bash
-        generate_ssh_key: yes
+        #generate_ssh_key: yes
         state: present
       with_items: "{{ userlist }}"
       when: item != "root"
@@ -110,3 +110,64 @@
         - "{{ userlist }}"
         - "{{ homedirs }}"
       become: True
+
+    - name: user's ssh keys
+      copy:
+        src: "files/{{ item.0 }}.id_rsa.pub"
+        dest: "{{ item.1 }}/.ssh/authorized_keys"
+        owner: "{{ item.0 }}"
+        group: "{{ item.0 }}"
+        mode: 0600
+      with_together:
+        - "{{ userlist }}"
+        - "{{ homedirs }}"
+      when: item.0 != "root"
+      become: True
+
+    - name: unpack system-wide conf
+      unarchive:
+        src: /tmp/etc.tgz
+        dest: /etc
+        remote_src: yes
+        owner: root
+        group: root
+        mode: 644
+      become: True
+
+    - name: some useful links
+      shell: ln -s tmux t
+      args:
+        chdir: /usr/bin
+      become: True
+
+    - name: root ssh login must be forbidden
+      shell: sed -i.orig -e 's/^PermitRootLogin\s.*\|^#.*PermitRootLogin\s.*/PermitRootLogin no/' /etc/ssh/sshd_config
+      become: true
+    - debug: msg="ssh daemon on {{ inventory_hostname }} should be restarted" verbosity=0
+
+    - name: additional locales conf
+      shell: sed -i.orig -e 's/.*pl_PL\.UTF-8.*/pl_PL.UTF-8 UTF-8/' -e 's/.*en_US\.UTF-8.*/en_US.UTF-8 UTF-8/' /etc/locale.gen
+      become: true
+
+    - name: additional locales generate
+      shell: locale-gen
+      become: true
+
+    - name: hosts
+      template:
+        src: templates/hosts
+        dest: /etc/hosts
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - name: hostname
+      template:
+        src: templates/hostname
+        dest: /etc/hostname
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
