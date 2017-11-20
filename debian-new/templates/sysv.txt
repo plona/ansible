@@ -1,0 +1,5 @@
+wajig install sysvinit-core sysvinit-utils
+cp /usr/share/sysvinit/inittab /etc/inittab (backup)
+reboot
+apt-get remove --purge --auto-remove systemd
+

@@ -1,0 +1,8 @@
+Package: systemd
+Pin: release *
+Pin-Priority: -1
+
+
+Package: *systemd*
+Pin: release *
+Pin-Priority: -1

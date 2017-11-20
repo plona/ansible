@@ -20,12 +20,12 @@
     - name: route
       command: ip route add default via 192.168.123.1 dev ens3
       ignore_errors: True
-      become: true
+      become: yes
  
-    - name: aka "wajig update"
+    - name: update apt cache
       apt:
         update_cache: yes
-      become: True
+      become: yes
 
     - name: install packages
       apt: name={{ item }} state=installed
@@ -56,9 +56,9 @@
         - tree
         - vim
         - wajig
-      become: True
+      become: yes
 
-    - name: aka "wajig upgrade"
+    - name: upgrade packages
       apt:
         upgrade: full
         autoremove: yes
@@ -67,7 +67,7 @@
 
     - name: network configuration
       script: remote_scripts/net_interface.sh ens3 ens4 >> /etc/network/interfaces
-      become: True
+      become: yes
 
     - name: create users
       user:
@@ -78,7 +78,7 @@
         state: present
       with_items: "{{ userlist }}"
       when: item != "root"
-      become: True
+      become: yes
 
     - name: copy files from local to remote
       copy:
@@ -86,7 +86,7 @@
         dest: /tmp/
       with_fileglob:
         - files/*.tgz
-      become: True
+      become: yes
 
     - name: unpack user's dot files & utils
       unarchive:
@@ -98,7 +98,7 @@
       with_together:
         - "{{ userlist }}"
         - "{{ homedirs }}"
-      become: True
+      become: yes
 
     - name: fix users homes permisions
       file:
@@ -109,7 +109,7 @@
       with_together:
         - "{{ userlist }}"
         - "{{ homedirs }}"
-      become: True
+      become: yes
 
     - name: user's ssh keys
       copy:
@@ -122,7 +122,7 @@
         - "{{ userlist }}"
         - "{{ homedirs }}"
       when: item.0 != "root"
-      become: True
+      become: yes
 
     - name: unpack system-wide conf
       unarchive:
@@ -132,26 +132,29 @@
         owner: root
         group: root
         mode: 644
-      become: True
+      become: yes
 
     - name: some useful links
       shell: ln -s tmux t
+      ignore_errors: True
       args:
         chdir: /usr/bin
-      become: True
+      become: yes
 
     - name: root ssh login must be forbidden
       shell: sed -i.orig -e 's/^PermitRootLogin\s.*\|^#.*PermitRootLogin\s.*/PermitRootLogin no/' /etc/ssh/sshd_config
-      become: true
+      become: yes
     - debug: msg="ssh daemon on {{ inventory_hostname }} should be restarted" verbosity=0
 
     - name: additional locales conf
       shell: sed -i.orig -e 's/.*pl_PL\.UTF-8.*/pl_PL.UTF-8 UTF-8/' -e 's/.*en_US\.UTF-8.*/en_US.UTF-8 UTF-8/' /etc/locale.gen
-      become: true
+      become: yes
 
     - name: additional locales generate
       shell: locale-gen
-      become: true
+      become: yes
+      register: stdout
+    - debug: msg="locale {{ stdout.stdout }} done" verbosity=0
 
     - name: hosts
       template:
@@ -170,4 +173,25 @@
         group: root
         mode: 0644
       become: yes
+
+    - name: grub
+      template:
+        src: templates/grub
+        dest: /etc/default/grub
+        backup: yes
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+    - name: update grub
+      shell: update-grub
+      become: yes
+    - debug: msg="host {{ inventory_hostname }} should be restarted" verbosity=0
+
+    - include: reboot.yml
+
+- name: local post-installation script
+  hosts: localhost
+  tasks:
+    - local_action: script local_scripts/post-install.sh
 

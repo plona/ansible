@@ -1,9 +1,9 @@
 #!/bin/bash - 
 #===============================================================================
 #
-#          FILE: pre-install.sh
+#          FILE: post-install.sh
 # 
-#         USAGE: ./pre-install.sh 
+#         USAGE: ./post-install.sh 
 # 
 #   DESCRIPTION: 
 # 
@@ -23,25 +23,6 @@ set -o errexit
 files="files"
 
 rm -rf $files/home/.vim || true
-cp -Rp $HOME/.vim $files/home
-
-mkdir -p $files/etc/bash_completion.d || true
-cp /etc/tmux.conf $files/etc
-cp /etc/bash_completion.d/tmux $files/etc/bash_completion.d
-
-shopt -s dotglob
-
-pushd $files/home
-tar czf ../home.tgz *
-popd
-
-pushd $files/etc
-tar czf ../etc.tgz *
-popd
-
-shopt -u dotglob
-
-#rm -f log/* || true
-cat /dev/null > log/ansible.log || true
+rm -f $files/*.tgz
 
 exit 0

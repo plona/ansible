@@ -29,4 +29,16 @@
 #       mode: 0644
 #     become: yes
 
-    - debug: msg="ssh daemon on {{ inventory_hostname }} should be restarted" verbosity=0
+    - name: grub
+      template:
+        src: templates/grub
+        dest: /etc/default/grub
+        backup: yes
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+    - name: update grub
+      shell: update-grub
+      become: yes
+    - debug: msg="host {{ inventory_hostname }} should be restarted" verbosity=0
