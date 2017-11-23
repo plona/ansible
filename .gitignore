@@ -3,4 +3,4 @@ debian-new/files/*.pub
 debian-new/files/home/*
 debian-new/files/etc/*
 debian-new/log/*
-
+debian-upgrade-distro/upgraded-host/*

@@ -1,0 +1,43 @@
+- name: local pre-installation script
+  hosts: localhost
+  vars_prompt:
+    - name: "delLog"
+      prompt: "delete old log?"
+      private: no
+      default: "yes"
+
+  tasks:
+    - local_action: script local_scripts/pre-install.sh
+    - shell: cat /dev/null > log/ansible.log
+      when: "{{ delLog == 'yes' }}"
+
+- name: upgrade from jessie to stretch
+  hosts: upgrade
+
+  tasks:
+
+#   - name: make report dir
+#     file:
+#       path: upgraded-host/{{ inventory_hostname }}
+#       state: directory
+#     delegate_to: localhost
+
+#   - name: backup conf
+#     script: remote_scripts/01-backup-configuration.sh
+#     register: result
+#     become: yes
+#   - debug: msg={{ result.stdout_lines }}
+
+    - name: fetch  conf (find)
+      find:
+        paths: /var/tmp/upgrade.bck
+        file_type: file
+        recurse: no
+        #patterns: "*"
+      register: result
+    - debug: msg={{ result.files }}
+    - name: fetch conf (fetch)
+      fetch:
+        src: "{{ item.path }}"
+        dest: upgraded-host
+      with_items: "{{ result.files }}"
