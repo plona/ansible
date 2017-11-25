@@ -23,12 +23,12 @@ set -o errexit
 
 # sprawdzenie "zatrzymanych" pakietów
 hold=false
-aptitude search "~ahold"
+#aptitude search "~ahold"
 dpkg --get-selections | grep 'hold$' || true
-[[ $(aptitude search "~ahold" | wc -l) -eq 0 ]] || hold=true
+#[[ $(aptitude search "~ahold" | wc -l) -eq 0 ]] || hold=true
 [[ $(dpkg --get-selections | grep 'hold$' | wc -l) -eq 0 ]] || hold=true
 [[ $hold == true ]] && {
-    echo "some packages is marked as \"holded\""
+    echo "some packages is marked as 'holded'"
     exit 1
 }
 

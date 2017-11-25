@@ -16,28 +16,94 @@
 
   tasks:
 
-#   - name: make report dir
-#     file:
-#       path: upgraded-host/{{ inventory_hostname }}
-#       state: directory
-#     delegate_to: localhost
+    - name: make report dir
+      file:
+        path: upgraded-host/{{ inventory_hostname }}
+        state: directory
+      delegate_to: localhost
 
-#   - name: backup conf
-#     script: remote_scripts/01-backup-configuration.sh
-#     register: result
-#     become: yes
-#   - debug: msg={{ result.stdout_lines }}
+    - name: backup conf
+      script: remote_scripts/01-backup-configuration.sh
+      ignore_errors: yes
+      register: result
+      become: yes
+    - debug: msg={{ result.stdout_lines }}
+    - meta: end_play
+      when: result.rc != 0
 
     - name: fetch  conf (find)
       find:
         paths: /var/tmp/upgrade.bck
         file_type: file
         recurse: no
-        #patterns: "*"
       register: result
-    - debug: msg={{ result.files }}
     - name: fetch conf (fetch)
       fetch:
         src: "{{ item.path }}"
         dest: upgraded-host
       with_items: "{{ result.files }}"
+
+    - name: third-party packages
+      shell: aptitude search '~i(!~ODebian)' -q
+      ignore_errors: yes
+      register: third_party
+      become: yes
+    - local_action: copy content="{{ third_party.stdout_lines }}" dest="upgraded-host/{{ inventory_hostname }}/third-party.packages"
+      when: third_party.rc == 0
+
+    - name: update & upgrade (before distro upgrade)
+      apt:
+        update_cache: yes
+        upgrade: full
+        autoremove: yes
+      register: result
+      become: yes
+    - debug: msg={{ result.stdout }}
+    - debug: msg={{ result.stderr }}
+    - apt: upgrade=dist
+      become: yes
+    
+    - name: sources.list
+      shell: sed -i.jessie -e 's/jessie/stretch/g' /etc/apt/sources.list
+      become: yes
+
+    - name: update stretch packages
+      apt: update_cache=yes
+      become: yes
+
+    - name: estimate disk space for upgrade
+      shell: apt-get -o APT::Get::Trivial-Only=true dist-upgrade | tail
+      ignore_errors: yes
+      register: result
+      become: yes
+      environment:
+        LC_ALL: "LC_ALL=C.UTF-8"
+    - debug: msg={{ result.stdout_lines }}
+
+    - name: check free disk space
+      shell: df -lhT
+      register: result
+      environment:
+        LC_ALL: "LC_ALL=C.UTF-8"
+    - debug: msg={{ result.stdout_lines }}
+
+    - name: confirm continuation
+      pause: prompt='OK to proceed? [Enter] - continute, [Ctrl]+c - abort'
+
+    - name: upgrade to current version
+      apt:
+        upgrade: full
+        autoremove: yes
+      register: result
+      become: yes
+    - debug: msg={{ result.stdout }}
+    - debug: msg={{ result.stderr }}
+    - apt: upgrade=dist
+      become: yes
+      register: result
+    - debug: msg={{ result.stdout }}
+    - debug: msg={{ result.stderr }}
+#
+#
+    - debug: msg="a few third-party packages installed!"
+      when: third_party.rc == 0

@@ -1,5 +1,0 @@
-- hosts: localhost
-  tasks:
-    - name: debug through ansible.env
-      register: myhome
-      debug: myhome="{{ lookup('env','HOME') }}"
