@@ -36,6 +36,9 @@
       with_items:
         - apt-file 
         - apt-transport-https
+        - binutils
+        - debian-goodies
+        - deborphan
         - dnsutils 
         - gawk
         - git
@@ -53,13 +56,16 @@
         - openssl
         - parted
         - pv
+        - resolvconf
         - rsync
         - sudo
+        - screen
         - sysvinit-core
         - sysvinit-utils
         - tcpdump
         - tmux
         - tree
+        - tshark
         - vim
         - wajig
       become: yes
