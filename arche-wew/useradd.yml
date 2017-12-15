@@ -1,0 +1,29 @@
+- name: Verify local ansible version.
+  hosts: localhost
+  pre_tasks:
+    - name: Verify local ansible version.
+      assert:
+        that: "ansible_version.full | version_compare('2.4', '>=')"
+        msg: "You must update Ansible to at least 2.4 to use this playbook."
+
+- name: add user, add to wheel, change password, change chage
+  hosts: all
+  vars:
+    username: aleksandras
+
+  tasks:
+
+    - name: add user
+      user:
+        name: "{{ username }}"
+        groups: wheel
+        state: present
+      become: yes
+
+    - name: first password
+      shell: echo "{{ username }}:{{ username }}" | chpasswd
+      become: yes
+
+    - name: chage
+      shell: chage -d0 {{ username }}
+      become: yes
