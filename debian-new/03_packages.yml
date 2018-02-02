@@ -1,0 +1,77 @@
+- name: Verify local ansible version.
+  hosts: localhost
+  pre_tasks:
+    - name: Verify local ansible version.
+      assert:
+        that: "ansible_version.full | version_compare('2.4', '>=')"
+        msg: "You must update Ansible to at least 2.4 to use this playbook."
+
+- name: install packages
+  hosts: new
+
+  tasks:
+
+    - name: install packages
+      apt: name={{ item }} state=installed
+      with_items:
+        - apt-file 
+        - apt-transport-https
+        - aptitude
+        - binutils
+        - debian-goodies
+        - deborphan
+        - dnsutils 
+        - gawk
+        - git
+        - htop 
+        - less
+        - lsb-release 
+        - lsof
+        - mc 
+        - mlocate 
+        - net-tools
+        - netcat-openbsd
+        - ntp
+        - ntpdate
+        - openssh-server
+        - openssl
+        - parted
+        - pv
+        - resolvconf
+        - rsync
+        - sudo
+        - screen
+        - tcpdump
+        - tmux
+        - tree
+        - vim
+        - wajig
+      become: yes
+
+    - name: uninstall packages
+      apt: name={{ item }} state=absent autoremove=yes purge=yes
+      with_items:
+        - dictionaries-common
+        - emacsen-common
+        - iamerican
+        - ibritish
+        - ienglish-common
+        - laptop-detect
+        - nano
+        - task-english
+        - tasksel
+        - tasksel-data
+      become: yes
+
+    - name: from backports
+      shell: apt-get install -y -t $(lsb_release -sc)-backports tmux
+      become: yes
+    - name: remove unused packages
+      shell: apt-get -yq autoremove
+      become: yes
+    - name: remove unused configuration
+      shell: aptitude -y purge '~c'
+      become: yes
+    - name: clean cache
+      shell: apt-get clean
+      become: yes

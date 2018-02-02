@@ -1,0 +1,75 @@
+- name: Verify local ansible version.
+  hosts: localhost
+  pre_tasks:
+    - name: Verify local ansible version.
+      assert:
+        that: "ansible_version.full | version_compare('2.4', '>=')"
+        msg: "You must update Ansible to at least 2.4 to use this playbook."
+
+- name: replace sytemd with sysvinit
+  hosts: new
+
+  tasks:
+
+    - name: sources.list
+      copy:
+        src: templates/etc/apt/sources.list
+        dest: /etc/apt/sources.list
+        backup: yes
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - name: update stretch packages
+      apt: update_cache=yes
+      become: yes
+
+    - name: replace systemd with sysvinit - (1) install packages
+      apt: name={{ item }} state=installed
+      with_items:
+        - sysvinit-core
+        - sysvinit-utils
+      become: yes
+
+    - name: replace systemd with sysvinit - (2) default inittab
+      copy:
+        src: /usr/share/sysvinit/inittab
+        dest: /etc/inittab
+        remote_src: yes
+        backup: yes
+        owner: root
+        group: root
+        mode: 644
+      become: yes
+
+    - name: turn off ipv6 (default/grub)
+      copy:
+        src: templates/etc/default/grub
+        dest: /etc/default/grub
+        backup: yes
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+    - name: turn off ipv6 (update-grub)
+      shell: update-grub
+      become: yes
+
+    - import_tasks: reboot.yml
+
+    - name: replace systemd with sysvinit - (3) purge systemd
+      apt: name=systemd state=absent autoremove=yes purge=yes
+      become: yes
+
+    - name: replace systemd with sysvinit - (4) pinning
+      template:
+        src: templates/etc/apt/preferences.d/systemd
+        dest: /etc/apt/preferences.d/systemd
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - import_tasks: reboot.yml
+

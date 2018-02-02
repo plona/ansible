@@ -1,0 +1,34 @@
+- name: Verify local ansible version.
+  hosts: localhost
+  pre_tasks:
+    - name: Verify local ansible version.
+      assert:
+        that: "ansible_version.full | version_compare('2.4', '>=')"
+        msg: "You must update Ansible to at least 2.4 to use this playbook."
+
+- name: standard installation
+  hosts: new
+
+  tasks:
+
+    - name: create users
+      user:
+        name: "{{ item }}"
+        groups: sudo
+        shell: /bin/bash
+        state: present
+      with_items: "{{ users }}"
+      when: item != "root"
+      become: yes
+
+    - name: user's passwords
+      shell: echo "{{ item }}":"{{ item }}" | chpasswd
+      with_items: "{{ users }}"
+      when: item != "root"
+      become: yes
+
+    - name: user's passwords - force change
+      shell: chage -d0 "{{ item }}"
+      with_items: "{{ users }}"
+      when: item != "root"
+      become: yes
