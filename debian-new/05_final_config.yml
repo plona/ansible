@@ -1,0 +1,70 @@
+- name: Verify local ansible version.
+  hosts: localhost
+  pre_tasks:
+    - name: Verify local ansible version.
+      assert:
+        that: "ansible_version.full | version_compare('2.4', '>=')"
+        msg: "You must update Ansible to at least 2.4 to use this playbook."
+
+- name: standard installation
+  hosts: new
+
+  tasks:
+
+    - name: hosts
+      template:
+        src: templates/etc/hosts
+        dest: /etc/hosts
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - name: hostname
+      template:
+        src: templates/etc/hostname
+        dest: /etc/hostname
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - name: additional locales conf
+      shell: sed -i.orig -e 's/.*pl_PL\.UTF-8.*/pl_PL.UTF-8 UTF-8/' -e 's/.*en_US\.UTF-8.*/en_US.UTF-8 UTF-8/' /etc/locale.gen
+      become: yes
+
+    - name: additional locales generate
+      shell: locale-gen
+      become: yes
+      register: stdout
+    - debug: msg="locale {{ stdout.stdout }} done" verbosity=0
+
+    - name: tmux completion
+      copy:
+        src: templates/etc/bash_completion.d/tmux
+        dest: /etc/bash_completion.d/tmux
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - name: tmux system-wide conf
+      copy:
+        src: templates/etc/tmux.conf
+        dest: /etc/tmux.conf
+        owner: root
+        group: root
+        mode: 0644
+        backup: yes
+      become: yes
+
+    - name: screen system-wide conf
+      copy:
+        src: templates/etc/screenrc
+        dest: /etc/screenrc
+        owner: root
+        group: root
+        mode: 0644
+        backup: yes
+      become: yes
+

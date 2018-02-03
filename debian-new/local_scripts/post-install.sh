@@ -20,7 +20,7 @@
 set -o nounset                              # Treat unset variables as an error
 set -o errexit
 
-files="files"
+files="templates"
 
 rm -rf $files/home/.vim || true
 rm -f $files/*.tgz

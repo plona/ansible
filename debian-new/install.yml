@@ -1,0 +1,276 @@
+# todo:
+# usunięcie partycji /extra, poprawa LVM
+# routing "ręcznie" przed usunięciem systemd (jeden reboot mniej)
+# reboot na zakończenie (na wszelki wypadek)
+- name: Verify local ansible version.
+  hosts: localhost
+  pre_tasks:
+    - name: Verify local ansible version.
+      assert:
+        that: "ansible_version.full | version_compare('2.4', '>=')"
+        msg: "You must update Ansible to at least 2.4 to use this playbook."
+  tasks:
+    - local_action: script local_scripts/pre-install.sh
+
+- name: standard installation
+  hosts: new
+
+  tasks:
+
+    - name: network configuration
+      template:
+        src: templates/etc/network/interfaces
+        dest: /etc/network/interfaces
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - import_tasks: reboot.yml
+
+    - name: sources.list
+      copy:
+        src: templates/etc/apt/sources.list
+        dest: /etc/apt/sources.list
+        backup: yes
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - name: update stretch packages
+      apt: update_cache=yes
+      become: yes
+
+    - name: replace systemd with sysvinit - (1) install packages
+      apt: name={{ item }} state=installed
+      with_items:
+        - sysvinit-core
+        - sysvinit-utils
+      become: yes
+
+    - name: replace systemd with sysvinit - (2) default inittab
+      copy:
+        src: /usr/share/sysvinit/inittab
+        dest: /etc/inittab
+        remote_src: yes
+        backup: yes
+        owner: root
+        group: root
+        mode: 644
+      become: yes
+
+    - name: turn off ipv6 (default/grub)
+      copy:
+        src: templates/etc/default/grub
+        dest: /etc/default/grub
+        backup: yes
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+    - name: turn off ipv6 (update-grub)
+      shell: update-grub
+      become: yes
+
+    - import_tasks: reboot.yml
+
+    - name: replace systemd with sysvinit - (3) purge systemd
+      apt: name=systemd state=absent autoremove=yes purge=yes
+      become: yes
+
+    - name: replace systemd with sysvinit - (4) pinning
+      template:
+        src: templates/etc/apt/preferences.d/systemd
+        dest: /etc/apt/preferences.d/systemd
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - import_tasks: reboot.yml
+
+    - name: install packages
+      apt: name={{ item }} state=installed
+      with_items:
+        - apt-file 
+        - apt-transport-https
+        - aptitude
+        - binutils
+        - debian-goodies
+        - deborphan
+        - dnsutils 
+        - gawk
+        - git
+        - htop 
+        - less
+        - lsb-release 
+        - lsof
+        - mc 
+        - mlocate 
+        - net-tools
+        - netcat-openbsd
+        - ntp
+        - ntpdate
+        - openssh-server
+        - openssl
+        - parted
+        - pv
+        - resolvconf
+        - rsync
+        - sudo
+        - screen
+        - tcpdump
+        - tmux
+        - tree
+        - vim
+        - wajig
+      become: yes
+
+    - name: uninstall packages
+      apt: name={{ item }} state=absent autoremove=yes purge=yes
+      with_items:
+        - dictionaries-common
+        - emacsen-common
+        - iamerican
+        - ibritish
+        - ienglish-common
+        - laptop-detect
+        - nano
+        - task-english
+        - tasksel
+        - tasksel-data
+      become: yes
+
+    - name: from backports
+      shell: apt-get install -y -t $(lsb_release -sc)-backports tmux
+      become: yes
+    - name: remove unused packages
+      shell: apt-get -yq autoremove
+      become: yes
+    - name: remove unused configuration
+      shell: aptitude -y purge '~c'
+      become: yes
+    - name: clean cache
+      shell: apt-get clean
+      become: yes
+
+    - name: create users
+      user:
+        name: "{{ item }}"
+        groups: sudo
+        shell: /bin/bash
+        state: present
+      with_items: "{{ users }}"
+      when: item != "root"
+      become: yes
+
+    - name: user's passwords
+      shell: echo "{{ item }}":"{{ item }}" | chpasswd
+      with_items: "{{ users }}"
+      when: item != "root"
+      become: yes
+
+    - name: user's passwords - force change
+      shell: chage -d0 "{{ item }}"
+      with_items: "{{ users }}"
+      when: item != "root"
+      become: yes
+
+    - name: copy files from local to remote
+      copy:
+        src: "{{ item }}"
+        dest: /tmp/
+      with_fileglob:
+        - templates/*.tgz
+
+    - name: unpack user's dot files & utils
+      unarchive:
+        src: /tmp/home.tgz
+        dest: "{{ item.1 }}"
+        owner: "{{ item.0 }}"
+        group: "{{ item.0 }}"
+        remote_src: yes
+      with_together:
+        - "{{ users }}"
+        - "{{ homes }}"
+      become: yes
+
+    - name: fix users homes permisions
+      file:
+        path: "{{ item.1 }}"
+        mode: 0700
+        owner: "{{ item.0 }}"
+        group: "{{ item.0 }}"
+      with_together:
+        - "{{ users }}"
+        - "{{ homes }}"
+      become: yes
+
+    - name: root ssh login must be forbidden
+      shell: sed -i.orig -e 's/^PermitRootLogin\s.*\|^#.*PermitRootLogin\s.*/PermitRootLogin no/' /etc/ssh/sshd_config
+      become: yes
+    - debug: msg="ssh daemon on {{ inventory_hostname }} should be restarted" verbosity=0
+
+    - name: hosts
+      template:
+        src: templates/etc/hosts
+        dest: /etc/hosts
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - name: hostname
+      template:
+        src: templates/etc/hostname
+        dest: /etc/hostname
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - name: additional locales conf
+      shell: sed -i.orig -e 's/.*pl_PL\.UTF-8.*/pl_PL.UTF-8 UTF-8/' -e 's/.*en_US\.UTF-8.*/en_US.UTF-8 UTF-8/' /etc/locale.gen
+      become: yes
+
+    - name: additional locales generate
+      shell: locale-gen
+      become: yes
+      register: stdout
+    - debug: msg="locale {{ stdout.stdout }} done" verbosity=0
+
+    - name: tmux completion
+      copy:
+        src: templates/etc/bash_completion.d/tmux
+        dest: /etc/bash_completion.d/tmux
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+
+    - name: tmux system-wide conf
+      copy:
+        src: templates/etc/tmux.conf
+        dest: /etc/tmux.conf
+        owner: root
+        group: root
+        mode: 0644
+        backup: yes
+      become: yes
+
+    - name: screen system-wide conf
+      copy:
+        src: templates/etc/screenrc
+        dest: /etc/screenrc
+        owner: root
+        group: root
+        mode: 0644
+        backup: yes
+      become: yes
+
+- name: local post-installation script
+  hosts: localhost
+  tasks:
+    - local_action: script local_scripts/post-install.sh
+

@@ -5,136 +5,136 @@
 
 - name: standard installation
   hosts: new
-  vars:
-    userlist:
-    - root
-    - marekpl
-    - krzysztofc
-    homedirs:
-    - /root
-    - /home/marekpl
-    - /home/krzysztofc
+# vars:
+#   userlist:
+#   - root
+#   - marekpl
+#   - krzysztofc
+#   homedirs:
+#   - /root
+#   - /home/marekpl
+#   - /home/krzysztofc
 
   tasks:
 
-    - name: route
-      command: ip route add default via 192.168.123.1 dev ens3
-      ignore_errors: False
-      become: yes
- 
-    - name: turn off src from sources.list
-      shell: sed -i.orig -e 's/^deb-src/#deb-src/' /etc/apt/sources.list
-      become: yes
+#   - name: route
+#     command: ip route add default via 192.168.123.1 dev ens3
+#     ignore_errors: False
+#     become: yes
+#
+#   - name: turn off src from sources.list
+#     shell: sed -i.orig -e 's/^deb-src/#deb-src/' /etc/apt/sources.list
+#     become: yes
 
-    - name: update apt cache
-      apt:
-        update_cache: yes
-      become: yes
+#   - name: update apt cache
+#     apt:
+#       update_cache: yes
+#     become: yes
 
-    - name: install packages
-      apt: name={{ item }} state=installed
-      with_items:
-        - apt-file 
-        - apt-transport-https
-        - binutils
-        - debian-goodies
-        - deborphan
-        - dnsutils 
-        - gawk
-        - git
-        - htop 
-        - less
-        - lsb-release 
-        - lsof
-        - mc 
-        - mlocate 
-        - net-tools
-        - netcat-openbsd
-        - ntp
-        - ntpdate
-        - openssh-server
-        - openssl
-        - parted
-        - pv
-        - resolvconf
-        - rsync
-        - sudo
-        - screen
-        - sysvinit-core
-        - sysvinit-utils
-        - tcpdump
-        - tmux
-        - tree
-        - tshark
-        - vim
-        - wajig
-      become: yes
+#   - name: install packages
+#     apt: name={{ item }} state=installed
+#     with_items:
+#       - apt-file 
+#       - apt-transport-https
+#       - binutils
+#       - debian-goodies
+#       - deborphan
+#       - dnsutils 
+#       - gawk
+#       - git
+#       - htop 
+#       - less
+#       - lsb-release 
+#       - lsof
+#       - mc 
+#       - mlocate 
+#       - net-tools
+#       - netcat-openbsd
+#       - ntp
+#       - ntpdate
+#       - openssh-server
+#       - openssl
+#       - parted
+#       - pv
+#       - resolvconf
+#       - rsync
+#       - sudo
+#       - screen
+#       - sysvinit-core
+#       - sysvinit-utils
+#       - tcpdump
+#       - tmux
+#       - tree
+#       - tshark
+#       - vim
+#       - wajig
+#     become: yes
 
-    - name: upgrade packages
-      apt:
-        upgrade: full
-        autoremove: yes
-        autoclean: yes
-      become: yes
+#   - name: upgrade packages
+#     apt:
+#       upgrade: full
+#       autoremove: yes
+#       autoclean: yes
+#     become: yes
 
-    - name: network configuration
-      script: remote_scripts/net_interface.sh ens3 ens4 >> /etc/network/interfaces
-      become: yes
+#   - name: network configuration
+#     script: remote_scripts/net_interface.sh ens3 ens4 >> /etc/network/interfaces
+#     become: yes
 
-    - name: create users
-      user:
-        name: "{{ item }}"
-        groups: sudo
-        shell: /bin/bash
-        #generate_ssh_key: yes
-        state: present
-      with_items: "{{ userlist }}"
-      when: item != "root"
-      become: yes
+#   - name: create users
+#     user:
+#       name: "{{ item }}"
+#       groups: sudo
+#       shell: /bin/bash
+#       #generate_ssh_key: yes
+#       state: present
+#     with_items: "{{ userlist }}"
+#     when: item != "root"
+#     become: yes
 
-    - name: copy files from local to remote
-      copy:
-        src: "{{ item }}"
-        dest: /tmp/
-      with_fileglob:
-        - files/*.tgz
-      become: yes
+#   - name: copy files from local to remote
+#     copy:
+#       src: "{{ item }}"
+#       dest: /tmp/
+#     with_fileglob:
+#       - files/*.tgz
+#     become: yes
 
-    - name: unpack user's dot files & utils
-      unarchive:
-        src: /tmp/home.tgz
-        dest: "{{ item.1 }}"
-        owner: "{{ item.0 }}"
-        group: "{{ item.0 }}"
-        remote_src: yes
-      with_together:
-        - "{{ userlist }}"
-        - "{{ homedirs }}"
-      become: yes
+#   - name: unpack user's dot files & utils
+#     unarchive:
+#       src: /tmp/home.tgz
+#       dest: "{{ item.1 }}"
+#       owner: "{{ item.0 }}"
+#       group: "{{ item.0 }}"
+#       remote_src: yes
+#     with_together:
+#       - "{{ userlist }}"
+#       - "{{ homedirs }}"
+#     become: yes
 
-    - name: fix users homes permisions
-      file:
-        path: "{{ item.1 }}"
-        mode: 0700
-        owner: "{{ item.0 }}"
-        group: "{{ item.0 }}"
-      with_together:
-        - "{{ userlist }}"
-        - "{{ homedirs }}"
-      become: yes
+#   - name: fix users homes permisions
+#     file:
+#       path: "{{ item.1 }}"
+#       mode: 0700
+#       owner: "{{ item.0 }}"
+#       group: "{{ item.0 }}"
+#     with_together:
+#       - "{{ userlist }}"
+#       - "{{ homedirs }}"
+#     become: yes
 
-    - name: user's ssh keys
-      copy:
-        src: "files/{{ item.0 }}.id_rsa.pub"
-        dest: "{{ item.1 }}/.ssh/authorized_keys"
-        owner: "{{ item.0 }}"
-        group: "{{ item.0 }}"
-        mode: 0600
-      with_together:
-        - "{{ userlist }}"
-        - "{{ homedirs }}"
-      when: item.0 != "root"
-      become: yes
+#   - name: user's ssh keys
+#     copy:
+#       src: "files/{{ item.0 }}.id_rsa.pub"
+#       dest: "{{ item.1 }}/.ssh/authorized_keys"
+#       owner: "{{ item.0 }}"
+#       group: "{{ item.0 }}"
+#       mode: 0600
+#     with_together:
+#       - "{{ userlist }}"
+#       - "{{ homedirs }}"
+#     when: item.0 != "root"
+#     become: yes
 
     - name: unpack system-wide conf
       unarchive:
@@ -153,82 +153,82 @@
         chdir: /usr/bin
       become: yes
 
-    - name: root ssh login must be forbidden
-      shell: sed -i.orig -e 's/^PermitRootLogin\s.*\|^#.*PermitRootLogin\s.*/PermitRootLogin no/' /etc/ssh/sshd_config
-      become: yes
-    - debug: msg="ssh daemon on {{ inventory_hostname }} should be restarted" verbosity=0
+#   - name: root ssh login must be forbidden
+#     shell: sed -i.orig -e 's/^PermitRootLogin\s.*\|^#.*PermitRootLogin\s.*/PermitRootLogin no/' /etc/ssh/sshd_config
+#     become: yes
+#   - debug: msg="ssh daemon on {{ inventory_hostname }} should be restarted" verbosity=0
 
-    - name: additional locales conf
-      shell: sed -i.orig -e 's/.*pl_PL\.UTF-8.*/pl_PL.UTF-8 UTF-8/' -e 's/.*en_US\.UTF-8.*/en_US.UTF-8 UTF-8/' /etc/locale.gen
-      become: yes
+#   - name: additional locales conf
+#     shell: sed -i.orig -e 's/.*pl_PL\.UTF-8.*/pl_PL.UTF-8 UTF-8/' -e 's/.*en_US\.UTF-8.*/en_US.UTF-8 UTF-8/' /etc/locale.gen
+#     become: yes
 
-    - name: additional locales generate
-      shell: locale-gen
-      become: yes
-      register: stdout
-    - debug: msg="locale {{ stdout.stdout }} done" verbosity=0
+#   - name: additional locales generate
+#     shell: locale-gen
+#     become: yes
+#     register: stdout
+#   - debug: msg="locale {{ stdout.stdout }} done" verbosity=0
 
-    - name: hosts
-      template:
-        src: templates/hosts
-        dest: /etc/hosts
-        owner: root
-        group: root
-        mode: 0644
-      become: yes
+#   - name: hosts
+#     template:
+#       src: templates/hosts
+#       dest: /etc/hosts
+#       owner: root
+#       group: root
+#       mode: 0644
+#     become: yes
 
-    - name: hostname
-      template:
-        src: templates/hostname
-        dest: /etc/hostname
-        owner: root
-        group: root
-        mode: 0644
-      become: yes
+#   - name: hostname
+#     template:
+#       src: templates/hostname
+#       dest: /etc/hostname
+#       owner: root
+#       group: root
+#       mode: 0644
+#     become: yes
 
-    - name: grub
-      template:
-        src: templates/grub
-        dest: /etc/default/grub
-        backup: yes
-        owner: root
-        group: root
-        mode: 0644
-      become: yes
-    - name: update grub
-      shell: update-grub
-      become: yes
-    - debug: msg="host {{ inventory_hostname }} should be restarted" verbosity=0
+#   - name: grub
+#     template:
+#       src: templates/grub
+#       dest: /etc/default/grub
+#       backup: yes
+#       owner: root
+#       group: root
+#       mode: 0644
+#     become: yes
+#   - name: update grub
+#     shell: update-grub
+#     become: yes
+#   - debug: msg="host {{ inventory_hostname }} should be restarted" verbosity=0
 
-    - name: replace systemd with sysvinit - part one
-      copy:
-        src: /usr/share/sysvinit/inittab
-        dest: /etc/inittab
-        remote_src: yes
-        backup: yes
-        owner: root
-        group: root
-        mode: 644
-      become: yes
+#   - name: replace systemd with sysvinit - part one
+#     copy:
+#       src: /usr/share/sysvinit/inittab
+#       dest: /etc/inittab
+#       remote_src: yes
+#       backup: yes
+#       owner: root
+#       group: root
+#       mode: 644
+#     become: yes
 
-    - name: replace systemd with sysvinit - part two
-      shell: sed -i.orig -e 's/^#T0:23:respawn:\/sbin\/getty -L ttyS0 9600 vt100/T0:123:respawn:\/sbin\/getty -L ttyS0 115200 xterm/' /etc/inittab
-      become: yes
+#   - name: replace systemd with sysvinit - part two
+#     shell: sed -i.orig -e 's/^#T0:23:respawn:\/sbin\/getty -L ttyS0 9600 vt100/T0:123:respawn:\/sbin\/getty -L ttyS0 115200 xterm/' /etc/inittab
+#     become: yes
 
-    - include: reboot.yml
+#   - include: reboot.yml
 
-    - name: replace systemd with sysvinit - part three
-      apt: name=systemd state=absent autoremove=yes purge=yes
-      become: yes
+#   - name: replace systemd with sysvinit - part three
+#     apt: name=systemd state=absent autoremove=yes purge=yes
+#     become: yes
 
-    - name: replace systemd with sysvinit - part four
-      template:
-        src: templates/systemd
-        dest: /etc/apt/preferences.d/systemd
-        owner: root
-        group: root
-        mode: 0644
-      become: yes
+#   - name: replace systemd with sysvinit - part four
+#     template:
+#       src: templates/systemd
+#       dest: /etc/apt/preferences.d/systemd
+#       owner: root
+#       group: root
+#       mode: 0644
+#     become: yes
 
 - name: local post-installation script
   hosts: localhost
